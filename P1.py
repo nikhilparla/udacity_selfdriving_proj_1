@@ -144,10 +144,13 @@ plt.imshow(line_img)
 
 lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]),min_line_len, max_line_gap)
 
-weighted_image = weighted_img(line_img, image, α=0.8, β=1., γ=0.)
+draw_lines(line_img, lines, color=[200, 0, 0], thickness=20)
+plt.imshow(line_img)
+
+weighted_image = weighted_img(line_img, image, α=1, β=0.5, γ=0.)
 plt.imshow(weighted_image)
 
-draw_lines(weighted_image, lines, color=[255, 0, 0], thickness=5)
-plt.imshow(weighted_image)
+
+
 plt.show()
 
