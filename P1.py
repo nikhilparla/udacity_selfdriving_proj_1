@@ -150,7 +150,60 @@ plt.imshow(line_img)
 weighted_image = weighted_img(line_img, image, α=1, β=0.5, γ=0.)
 plt.imshow(weighted_image)
 
-
-
 plt.show()
 
+# Import everything needed to edit/save/watch video clips
+from moviepy.editor import VideoFileClip
+from IPython.display import HTML
+
+def process_image(image):
+    # NOTE: The output you return should be a color image (3 channel) for processing video below
+    # TODO: put your pipeline here,
+    # you should return the final output (image where lines are drawn on lanes)
+    # TODO: Build your pipeline that will draw lane lines on the test_images
+# then save them to the test_images_output directory.
+
+    gray = grayscale(image)
+ 
+    kernel_size = 3
+    blur_gray = gaussian_blur(gray, kernel_size)
+    low_threshold = 100
+    high_threshold = 150
+    canny_out = canny(blur_gray, low_threshold, high_threshold)
+ 
+    # give the vertices of polygon in an array form
+    ysize = image.shape[0]
+    xsize = image.shape[1]
+    vertices = np.array([[[100, ysize], [450,325],[525,325], [850,ysize]]], dtype=np.int32)
+    #Region of interest
+    masked_image = region_of_interest(canny_out, vertices)
+ 
+    #Hough transforms
+    img = masked_image
+    rho = 1
+    theta = np.pi/180
+    threshold = 10
+    min_line_len = 10
+    max_line_gap = 2
+    line_img = hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap)
+ 
+    lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]),min_line_len, max_line_gap)
+    draw_lines(line_img, lines, color=[200, 0, 0], thickness=25)
+ 
+    weighted_image = weighted_img(line_img, image, α=1, β=0.5, γ=0.)
+ 
+ 
+    result = weighted_image
+
+
+    return result
+	
+white_output = 'test_videos_output/solidWhiteRight.mp4'
+## To speed up the testing process you may want to try your pipeline on a shorter subclip of the video
+## To do so add .subclip(start_second,end_second) to the end of the line below
+## Where start_second and end_second are integer values representing the start and end of the subclip
+## You may also uncomment the following line for a subclip of the first 5 seconds
+##clip1 = VideoFileClip("test_videos/solidWhiteRight.mp4").subclip(0,5)
+clip1 = VideoFileClip("test_videos/solidWhiteRight.mp4").subclip(0,10)
+white_clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
+white_clip.write_videofile(white_output, audio=False)
