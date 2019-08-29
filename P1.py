@@ -106,84 +106,98 @@ def weighted_img(img, initial_img, α=0.8, β=1., γ=0.):
     """
     return cv2.addWeighted(initial_img, α, img, β, γ)
 
+def process_image(image):
+    # NOTE: The output you return should be a color image (3 channel) for processing video below
+    # TODO: put your pipeline here,
+    # you should return the final output (image where lines are drawn on lanes)
+    # TODO: Build your pipeline that will draw lane lines on the test_images
+# then save them to the test_images_output directory.
+
+    gray = grayscale(image)
+ 
+    kernel_size = 3
+    blur_gray = gaussian_blur(gray, kernel_size)
+    low_threshold = 100
+    high_threshold = 150
+    canny_out = canny(blur_gray, low_threshold, high_threshold)
+ 
+    # give the vertices of polygon in an array form
+    ysize = image.shape[0]
+    xsize = image.shape[1]
+    vertices = np.array([[[100, ysize], [450,325],[525,325], [850,ysize]]], dtype=np.int32)
+    #Region of interest
+    masked_image = region_of_interest(canny_out, vertices)
+ 
+    #Hough transforms
+    img = masked_image
+    rho = 1
+    theta = np.pi/180
+    threshold = 10
+    min_line_len = 10
+    max_line_gap = 2
+    line_img = hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap)
+ 
+    lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]),min_line_len, max_line_gap)
+
+    pos_slope_line_x = []
+    pos_slope_line_y = []
+    neg_slope_line_x = []
+    neg_slope_line_y = []
+    
+    for line in lines:
+        for x1,y1,x2,y2 in line:
+            if((y2-y1)/(x2-x1) > 0):
+                pos_slope_line_x.append(x1)
+                pos_slope_line_x.append(x2)
+                pos_slope_line_y.append(y1)
+                pos_slope_line_y.append(y2)
+            else:
+                neg_slope_line_x.append(x1)
+                neg_slope_line_x.append(x2)
+                neg_slope_line_y.append(y1)
+                neg_slope_line_y.append(y2)
+                
+    fit_left =  np.polyfit(pos_slope_line_x,pos_slope_line_y,1)
+    fit_right = np.polyfit(neg_slope_line_x,neg_slope_line_y,1)
+    
+    # y =fit_left[0] * x + fit_left[1]
+    # ysize = fit_left[0] *x + fit_left[1]
+    # x = ysize - fit_left[1] dividedby fit_left[0]
+    xpos_bottomleft = (ysize - fit_left[1])/fit_left[0]
+    xpos_topleft = (325 - fit_left[1])/fit_left[0]
+    xpos_bottomrigt = (ysize - fit_right[1])/fit_right[0]
+    xpos_topright = (325 - fit_right[1])/fit_right[0]
+    cv2.line(line_img, (int(xpos_bottomleft), ysize), (int(xpos_topleft), 325), 255, 20)
+    cv2.line(line_img, (int(xpos_bottomrigt), ysize), (int(xpos_topright), 325), 255, 20)
+    if(int(xpos_bottomrigt) > xsize):
+        print('bot right = ', xpos_bottomrigt)
+        print('pos slope = ', fit_left[0])
+    if(int(xpos_topright) < 0):
+        print('topright = ', xpos_topright)
+        print('neg slope = ', fit_right[0])
+        
+    #draw_lines(line_img, lines, color=[200, 0, 0], thickness=25)
+ 
+    weighted_image = weighted_img(line_img, image, α=1, β=0.5, γ=0.)
+ 
+    result = weighted_image
+
+
+    return result
+    
+
 import os
-os.listdir("test_images/")
+images = os.listdir("test_images/")
+#image = mpimg.imread('test.jpg')
 
 # TODO: Build your pipeline that will draw lane lines on the test_images
 # then save them to the test_images_output directory.
-
-gray = grayscale(image)
-plt.imshow(gray, cmap='gray')
-
-kernel_size = 3
-blur_gray = gaussian_blur(gray, kernel_size)
-
-low_threshold = 100
-high_threshold = 150
-canny_out = canny(blur_gray, low_threshold, high_threshold)
-plt.imshow(canny_out, cmap='Greys_r')
-
-# give the vertices of polygon in an array form
-ysize = image.shape[0]
-xsize = image.shape[1]
-vertices = np.array([[[100, ysize], [450,325],[525,325], [850,ysize]]], dtype=np.int32)
-
-#Region of interest
-masked_image = region_of_interest(canny_out, vertices)
-plt.imshow(masked_image, cmap='Greys_r')
-
-#Hough transforms
-img = masked_image
-rho = 1
-theta = np.pi/180
-threshold = 10
-min_line_len = 10
-max_line_gap = 2
-line_img = hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap)
-plt.imshow(line_img)
-
-lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]),min_line_len, max_line_gap)
-
-pos_slope_line_x = []
-pos_slope_line_y = []
-neg_slope_line_x = []
-neg_slope_line_y = []
-
-for line in lines:
-    for x1,y1,x2,y2 in line:
-        if((y2-y1)/(x2-x1)) > 0:
-            pos_slope_line_x.append(x1)
-            pos_slope_line_x.append(x2)
-            pos_slope_line_y.append(y1)
-            pos_slope_line_y.append(y2)
-        else:
-            neg_slope_line_x.append(x1)
-            neg_slope_line_x.append(x2)
-            neg_slope_line_y.append(y1)
-            neg_slope_line_y.append(y2)
-			
-fit_left =  np.polyfit(pos_slope_line_x,pos_slope_line_y,1)
-fit_right = np.polyfit(neg_slope_line_x,neg_slope_line_y,1)
-
-# y =fit_left[0] * x + fit_left[1]
-# ysize = fit_left[0] *x + fit_left[1]
-# x = ysize - fit_left[1] dividedby fit_left[0]
-xpos_bottomleft = (ysize - fit_left[1])/fit_left[0]
-xpos_topleft = (325 - fit_left[1])/fit_left[0]
-xpos_bottomrigt = (ysize - fit_right[1])/fit_right[0]
-xpos_topright = (325 - fit_right[1])/fit_right[0]
-cv2.line(line_img, (int(xpos_bottomleft), ysize), (int(xpos_topleft), 325), 255, 20)
-cv2.line(line_img, (int(xpos_bottomrigt), ysize), (int(xpos_topright), 325), 255, 20)
-    
-
-
-#draw_lines(line_img, lines, color=[200, 0, 0], thickness=20)
-#plt.imshow(line_img)
-
-weighted_image = weighted_img(line_img, image, α=1, β=0.5, γ=0.)
-#plt.imshow(weighted_image)
-
-plt.show()
+for image in images:
+    print('image = ', "test_images/" + image)
+    print('This image is:', type(mpimg.imread("test_images/" + image)), 'with dimensions:', mpimg.imread("test_images/" + image).shape)
+    output_image = process_image(mpimg.imread("test_images/" + image))
+    plt.imshow(output_image)
+    plt.show()
 
 
 # Import everything needed to edit/save/watch video clips
@@ -240,7 +254,7 @@ def process_image(image):
                 neg_slope_line_x.append(x2)
                 neg_slope_line_y.append(y1)
                 neg_slope_line_y.append(y2)
-    			
+                
     fit_left =  np.polyfit(pos_slope_line_x,pos_slope_line_y,1)
     fit_right = np.polyfit(neg_slope_line_x,neg_slope_line_y,1)
     
@@ -254,10 +268,12 @@ def process_image(image):
     cv2.line(line_img, (int(xpos_bottomleft), ysize), (int(xpos_topleft), 325), 255, 20)
     cv2.line(line_img, (int(xpos_bottomrigt), ysize), (int(xpos_topright), 325), 255, 20)
     if(int(xpos_bottomrigt) > xsize):
-	    print('bot right = ', xpos_bottomrigt)
+        print('bot right = ', xpos_bottomrigt)
+        print('pos slope = ', fit_left[0])
     if(int(xpos_topright) < 0):
-	    print('topright = ', xpos_topright)
-		
+        print('topright = ', xpos_topright)
+        print('neg slope = ', fit_right[0])
+        
     #draw_lines(line_img, lines, color=[200, 0, 0], thickness=25)
  
     weighted_image = weighted_img(line_img, image, α=1, β=0.5, γ=0.)
