@@ -144,14 +144,48 @@ plt.imshow(line_img)
 
 lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]),min_line_len, max_line_gap)
 
-draw_lines(line_img, lines, color=[200, 0, 0], thickness=20)
-plt.imshow(line_img)
+pos_slope_line_x = []
+pos_slope_line_y = []
+neg_slope_line_x = []
+neg_slope_line_y = []
+
+for line in lines:
+    for x1,y1,x2,y2 in line:
+        if((y2-y1)/(x2-x1) > 0):
+            pos_slope_line_x.append(x1)
+            pos_slope_line_x.append(x2)
+            pos_slope_line_y.append(y1)
+            pos_slope_line_y.append(y2)
+        else:
+            neg_slope_line_x.append(x1)
+            neg_slope_line_x.append(x2)
+            neg_slope_line_y.append(y1)
+            neg_slope_line_y.append(y2)
+			
+fit_left =  np.polyfit(pos_slope_line_x,pos_slope_line_y,1)
+fit_right = np.polyfit(neg_slope_line_x,neg_slope_line_y,1)
+
+# y =fit_left[0] * x + fit_left[1]
+# ysize = fit_left[0] *x + fit_left[1]
+# x = ysize - fit_left[1] dividedby fit_left[0]
+xpos_bottomleft = (ysize - fit_left[1])/fit_left[0]
+xpos_topleft = (325 - fit_left[1])/fit_left[0]
+xpos_bottomrigt = (ysize - fit_right[1])/fit_right[0]
+xpos_topright = (325 - fit_right[1])/fit_right[0]
+cv2.line(line_img, (int(xpos_bottomleft), ysize), (int(xpos_topleft), 325), 255, 20)
+cv2.line(line_img, (int(xpos_bottomrigt), ysize), (int(xpos_topright), 325), 255, 20)
+    
+
+
+#draw_lines(line_img, lines, color=[200, 0, 0], thickness=20)
+#plt.imshow(line_img)
 
 weighted_image = weighted_img(line_img, image, α=1, β=0.5, γ=0.)
 plt.imshow(weighted_image)
 
 plt.show()
 
+"""
 # Import everything needed to edit/save/watch video clips
 from moviepy.editor import VideoFileClip
 from IPython.display import HTML
@@ -188,16 +222,16 @@ def process_image(image):
     line_img = hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap)
  
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]),min_line_len, max_line_gap)
+    
     draw_lines(line_img, lines, color=[200, 0, 0], thickness=25)
  
     weighted_image = weighted_img(line_img, image, α=1, β=0.5, γ=0.)
- 
  
     result = weighted_image
 
 
     return result
-	
+    
 white_output = 'test_videos_output/solidWhiteRight.mp4'
 ## To speed up the testing process you may want to try your pipeline on a shorter subclip of the video
 ## To do so add .subclip(start_second,end_second) to the end of the line below
@@ -207,3 +241,4 @@ white_output = 'test_videos_output/solidWhiteRight.mp4'
 clip1 = VideoFileClip("test_videos/solidWhiteRight.mp4").subclip(0,10)
 white_clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
 white_clip.write_videofile(white_output, audio=False)
+"""
